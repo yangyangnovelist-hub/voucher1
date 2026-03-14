@@ -1,0 +1,60 @@
+name: Build EXE (Windows) + APP (Mac)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build EXE
+        run: python build_win.py
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoucherTool-Windows
+          path: dist/VoucherTool.exe
+          retention-days: 30
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build .app
+        run: |
+          flet pack launcher.py --name VoucherTool \
+            --add-data "app.py:." \
+            --add-data "company_manager.py:." \
+            --add-data "rules_manager.py:." \
+            --add-data "processor:processor" \
+            --add-data "utils:utils"
+
+      - name: Zip .app
+        run: cd dist && zip -r VoucherTool-Mac.zip VoucherTool.app
+
+      - name: Upload Mac app
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoucherTool-Mac
+          path: dist/VoucherTool-Mac.zip
+          retention-days: 30

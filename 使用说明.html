@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>凭证生成工具 - 使用说明</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; max-width: 680px; margin: 40px auto; padding: 0 24px; color: #333; line-height: 1.9; }
+  h1 { color: #1a6eb5; border-bottom: 2px solid #1a6eb5; padding-bottom: 10px; }
+  h2 { color: #1a6eb5; margin-top: 32px; }
+  .step { background: #f0f7ff; border-left: 4px solid #1a6eb5; padding: 14px 20px; margin: 14px 0; border-radius: 0 8px 8px 0; }
+  .warn { background: #fff8e1; border-left: 4px solid #f5a623; padding: 12px 18px; border-radius: 0 8px 8px 0; margin: 10px 0; }
+  .tip  { background: #e8f5e9; border-left: 4px solid #43a047; padding: 12px 18px; border-radius: 0 8px 8px 0; margin: 10px 0; }
+  .big  { font-size: 20px; font-weight: bold; color: #1a6eb5; }
+  code  { background: #eee; padding: 2px 7px; border-radius: 4px; font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+
+<h1>&#128202; 凭证生成工具 — 使用说明</h1>
+
+<h2>安装与启动（只有两步）</h2>
+
+<div class="step">
+  <b>第一步：</b>解压 <code>voucher_app.zip</code><br>
+  右键点击 zip 文件 → <b>全部解压缩</b> → 选择解压位置（如桌面）
+</div>
+
+<div class="step">
+  <b>第二步：</b>进入解压后的 <code>voucher_app</code> 文件夹，双击<br><br>
+  <span class="big">start.bat</span><br><br>
+  <b>首次运行</b>会自动下载并安装运行环境（约需 2-5 分钟，需要网络）。<br>
+  安装完成后浏览器自动打开工具页面。<br><br>
+  <b>以后每次</b>双击 <code>start.bat</code> 即可，秒开，无需再下载。
+</div>
+
+<div class="warn">
+  &#9888;&#65039; <b>Windows 提示"已保护你的电脑"？</b><br>
+  点击「更多信息」→「仍要运行」。这是 Windows 对未签名脚本的默认提示，正常现象。
+</div>
+
+<div class="tip">
+  &#128161; <b>小技巧：</b>右键 <code>start.bat</code> → 发送到 → 桌面快捷方式，以后直接从桌面双击启动。
+</div>
+
+<h2>数据保存在哪里？</h2>
+<div class="step">
+  公司档案、科目文件、匹配规则保存在 <code>voucher_app\data\</code> 文件夹。<br>
+  更新程序时保留 <code>data</code> 文件夹，不会丢失已配置的信息。
+</div>
+
+<h2>常见问题</h2>
+<div class="warn">
+  <b>浏览器没有自动打开？</b><br>
+  手动打开浏览器，地址栏输入 <code>http://localhost:8501</code> 回车。
+</div>
+<div class="warn">
+  <b>首次下载失败？</b><br>
+  检查网络连接，再次双击 <code>start.bat</code> 重试。
+</div>
+<div class="warn">
+  <b>关掉黑色窗口后网页打不开？</b><br>
+  黑色窗口是后台服务，使用时请保持开着（可最小化）。
+</div>
+
+</body>
+</html>

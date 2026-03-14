@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+data/
+dist/
+build/
+*.spec
+_python/
+_python.zip
+_getpip.py
+.DS_Store
