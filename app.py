@@ -1,4 +1,5 @@
 import flet as ft
+import socket
 import pandas as pd
 import os, sys, re
 from io import BytesIO
@@ -823,7 +824,26 @@ async def main(page: ft.Page):
     show_list()
 
 
+def _ensure_single_instance():
+    """
+    Prevent launching multiple instances (especially for Windows exe).
+    Uses a localhost TCP bind as a simple single-instance lock.
+    """
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", 47299))
+        s.listen(1)
+        return s
+    except OSError:
+        return None
+
+
 if __name__ == "__main__":
+    _lock_sock = _ensure_single_instance()
+    if _lock_sock is None:
+        print("应用已在运行中，请切换到已打开的窗口。")
+        raise SystemExit(0)
+
     # Flet API compatibility: newer versions use ft.app
     if hasattr(ft, "app"):
         ft.app(target=main)

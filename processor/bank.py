@@ -20,7 +20,6 @@ EXPENSE_NOTE_MAP = [
 EXPENSE_SUMMARY_MAP = [
     (['自助交易费', '短信服务费', '手续费', '服务费'], '5503001'),
     (['利息'], '5503002'),
-    (['归还本息', '还款'], '2101'),
 ]
 FILTER_ACCOUNT_SUFFIX = '1511'
 _EMPTY_AUX = {
@@ -176,6 +175,9 @@ def process_bank(df_raw, matcher, company_name, income_voucher_start,
 
     bank_code    = bank_subject_code.strip() if bank_subject_code.strip() else '1002'
     bank_display = matcher.get_display_name(bank_code) or '银行存款'
+    acct_map = {a.account_no.strip(): a.subject_code.strip()
+                for a in company_accounts
+                if getattr(a, "account_no", "").strip()}
 
     time_col       = _find_col(df, _COL_TIME)
     cp_name_col    = _find_col(df, _COL_CP_NAME)
@@ -262,6 +264,15 @@ def process_bank(df_raw, matcher, company_name, income_voucher_start,
             note             = _s(row, note_col)
             memo             = f"{trade_date}，{counterpart}" if counterpart else trade_date
 
+            # 内部转账：对方户名=公司名 且 对方账号是本公司其他账号
+            is_internal = bool(
+                company_name and counterpart and counterpart_acct
+                and counterpart.strip() == company_name.strip()
+                and counterpart_acct.strip() in acct_map
+            )
+            internal_code = acct_map.get(counterpart_acct.strip(), '')
+            internal_name = matcher.get_display_name(internal_code) if internal_code else ''
+
             # ── 判断收入/支出金额 ──────────────────────────────
             if debit_flag_col:
                 raw_flag = _s(row, debit_flag_col)
@@ -305,7 +316,31 @@ def process_bank(df_raw, matcher, company_name, income_voucher_start,
                         inc_val, exp_val = abs(amt_raw), 0.0
 
             if inc_val > 0:
-                if '利息' in raw_summary or '利息' in note:
+                if is_internal and internal_code:
+                    income_rows += [
+                        _r(voucher_date, income_voucher_start, inc_seq,     memo, bank_code,     bank_display, inc_val, '',      False),
+                        _r(voucher_date, income_voucher_start, inc_seq + 1, memo, internal_code, internal_name, '',      inc_val, False),
+                    ]
+                    inc_seq += 2
+                elif is_internal and not internal_code:
+                    warnings.append(
+                        f"{month} 内部转账：对方账号 {counterpart_acct} 未配置银行科目，已转为待确认。"
+                    )
+                    pending_items.append({
+                        'trade_date':        trade_date,
+                        'month':             str(month),
+                        'counterpart':       counterpart,
+                        'counterpart_acct':  counterpart_acct,
+                        'summary':           raw_summary,
+                        'note':              note,
+                        'amount':            inc_val,
+                        'memo':              memo,
+                        'voucher_date':      voucher_date,
+                        'bank_code':         bank_code,
+                        'bank_name':         bank_display,
+                        'direction':         'income',
+                    })
+                elif '利息' in raw_summary or '利息' in note:
                     cr_code  = '5503002'
                     cr_name  = matcher.get_display_name(cr_code)
                     income_rows += [
@@ -339,8 +374,19 @@ def process_bank(df_raw, matcher, company_name, income_voucher_start,
                         inc_seq += 2
 
             if exp_val > 0:
-                code = _resolve(note, raw_summary, counterpart, matcher, user_rules)
-                if code is None:
+                if is_internal and internal_code:
+                    expense_rows += [
+                        _r(voucher_date, expense_voucher_start, exp_seq,     memo, internal_code, internal_name, exp_val, '',      False),
+                        _r(voucher_date, expense_voucher_start, exp_seq + 1, memo, bank_code,    bank_display,  '',      exp_val, False),
+                    ]
+                    exp_seq += 2
+                else:
+                    code = _resolve(note, raw_summary, counterpart, matcher, user_rules)
+                    if code is None:
+                        if is_internal and not internal_code:
+                            warnings.append(
+                                f"{month} 内部转账：对方账号 {counterpart_acct} 未配置银行科目，已转为待确认。"
+                            )
                     pending_items.append({
                         'trade_date':       trade_date,
                         'month':            str(month),
@@ -355,13 +401,13 @@ def process_bank(df_raw, matcher, company_name, income_voucher_start,
                         'bank_name':        bank_display,
                         'direction':        'expense',
                     })
-                else:
-                    dr_name = matcher.get_display_name(code)
-                    expense_rows += [
-                        _r(voucher_date, expense_voucher_start, exp_seq,     memo, code,      dr_name,      exp_val, '',      False),
-                        _r(voucher_date, expense_voucher_start, exp_seq + 1, memo, bank_code, bank_display, '',      exp_val, False),
-                    ]
-                    exp_seq += 2
+                    else:
+                        dr_name = matcher.get_display_name(code)
+                        expense_rows += [
+                            _r(voucher_date, expense_voucher_start, exp_seq,     memo, code,      dr_name,      exp_val, '',      False),
+                            _r(voucher_date, expense_voucher_start, exp_seq + 1, memo, bank_code, bank_display, '',      exp_val, False),
+                        ]
+                        exp_seq += 2
 
         result[str(month)] = (income_rows, expense_rows)
 
@@ -446,6 +492,9 @@ def _resolve(note, summary, counterpart, matcher, user_rules):
     for text in [note, summary]:
         if not text:
             continue
+        # 对“归还本息/还款”不自动匹配，留给用户确认（可能是短期或长期借款）
+        if ('归还本息' in text) or ('还款' in text):
+            return None
         for keywords, mapped_code in EXPENSE_NOTE_MAP:
             for kw in keywords:
                 if kw in text:
